@@ -1,0 +1,78 @@
+DownloadOperation downloadOperation; 
+CancellationTokenSource cancellationToken; 
+Windows.Networking.BackgroundTransfer.BackgroundDownloader backgroundDownloader = new Windows.Networking.BackgroundTransfer.BackgroundDownloader(); 
+public MainPage() 
+{ 
+this.InitializeComponent(); 
+} 
+public async void Download() 
+{ 
+ 
+FolderPicker folderPicker = new FolderPicker(); 
+folderPicker.SuggestedStartLocation = PickerLocationId.Downloads; 
+folderPicker.ViewMode = PickerViewMode.Thumbnail; 
+folderPicker.FileTypeFilter.Add("*"); 
+StorageFolder folder = await folderPicker.PickSingleFolderAsync(); 
+if (folder != null) 
+{ 
+StorageFile file = await folder.CreateFileAsync("NewFile.jpg", CreationCollisionOption.GenerateUniqueName); 
+Uri durl = new Uri(linkBox.Text.ToString()); 
+downloadOperation = backgroundDownloader.CreateDownload(durl, file); 
+Progress<DownloadOperation> progress = new Progress<DownloadOperation>(progressChanged); 
+cancellationToken = new CancellationTokenSource(); 
+ 
+try 
+{ 
+Statustext.Text = "Initializing..."; 
+await downloadOperation.StartAsync().AsTask(cancellationToken.Token, progress); 
+} 
+catch (TaskCanceledException) 
+{ 
+ 
+downloadOperation.ResultFile.DeleteAsync(); 
+downloadOperation = null; 
+} 
+} 
+} 
+private void progressChanged(DownloadOperation downloadOperation) 
+{ 
+int progress = (int)(100 * ((double)downloadOperation.Progress.BytesReceived / (double)downloadOperation.Progress.TotalBytesToReceive)); 
+Statustext.Text = String.Format("{0} of {1} kb. downloaded - %{2} complete.", downloadOperation.Progress.BytesReceived / 1024, downloadOperation.Progress.TotalBytesToReceive / 1024, progress); 
+ 
+switch (downloadOperation.Progress.Status) 
+{ 
+case BackgroundTransferStatus.Running: 
+{ 
+break; 
+} 
+case BackgroundTransferStatus.PausedByApplication: 
+{ 
+ 
+break; 
+} 
+case BackgroundTransferStatus.PausedCostedNetwork: 
+{ 
+ 
+break; 
+} 
+case BackgroundTransferStatus.PausedNoNetwork: 
+{ 
+ 
+break; 
+} 
+case BackgroundTransferStatus.Error: 
+{ 
+Statustext.Text = "An error occured while downloading."; 
+break; 
+} 
+} 
+if (progress >= 100) 
+{ 
+downloadOperation = null; 
+} 
+} 
+private void downloadBtn_Click(object sender, RoutedEventArgs e) 
+{ 
+Download(); 
+} 
+} 
